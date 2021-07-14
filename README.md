@@ -14,11 +14,11 @@ This emulator can be run by any user, though it currently only has a command lin
 
 In the command line, go to the directory `chip8-python-testing` wherever it has been stored in your computer using `cd` commands.
 
-`chip8_unprinted.py` is used to run ROMs, no fancy stuff. `chip8.py` is the same, but has various debugging tools. `ch8_reader` is a debugging tool not intended for the user, it prints various instructions stored in memory. The test ROMs are located in the `programs` directory.
+`chip8.py` is used to run ROMs, no fancy stuff. `chip8_debug.py` is the same, but has various debugging tools. `ch8_reader` is a debugging tool not intended for the user, it prints various instructions stored in memory. The test ROMs are located in the `programs` directory.
 
 Here is an example command in the terminal that would run Pong:
 ```
-python chip8_unprinted.py programs/PONG
+python chip8.py programs/PONG
 ```
 
 ## How can I write a CHIP-8 emulator?
