@@ -23,3 +23,10 @@ python chip8_unprinted.py programs/PONG
 
 ## How can I write a CHIP-8 emulator?
 I used [this guide](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) to write my emulator. It is language-independent and doesn't completely walk you through the process, so it's a good learning tool. For graphics, I used `graphics.py` and the `GraphWin` object in particular, though there are many, many other graphics tools based around Tkinter.
+
+## Future Development
+The largest feature not implemented in this emulator is sound. In the future, it's a possibility that I could add this feature.
+
+All of the ROMs I tested in the emulator work besides sound, and there are extra compatibility options for rare ROMs that work differently.
+
+For the most part, I am moving on to a different emulator, most likely the original Gameboy. I will likely need to learn C++ to make that particular emulator efficient, so that will take some time to complete.
