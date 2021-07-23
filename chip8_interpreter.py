@@ -1,9 +1,11 @@
 import sys
 import os
+import re
 import time
 import random
 import keyboard
 import winsound
+from ast import literal_eval
 from graphics import GraphWin, Rectangle, Point
 from chip8_engine import Chip8
 
@@ -18,6 +20,9 @@ inc = False
 # debug mode
 debug = False
 
+# line by line mode
+lbl = False
+
 # rom filename
 file_name = sys.argv[1]
 
@@ -30,6 +35,8 @@ if len(sys.argv) > 2:
             inc = True
         elif comm == "-d":
             debug = True
+        elif comm == "-l":
+            lbl = True
 
 # nullify print statements if not debugging
 if not debug:
@@ -42,7 +49,7 @@ with open(file_name, 'rb') as f:
         chip_8.memory[0x200 + i] = file_content[i]
 
 # create canvas
-win = GraphWin(width = 64 * 16, height = 32 * 16)
+win = GraphWin(width=64 * 16, height=32 * 16, autoflush=False)
 win.setCoords(0, 0, 64, 32)
 
 # clear display
@@ -56,6 +63,8 @@ while True:
     # cycle timing
     tick = time.time()
     time.sleep(1/700)
+    if lbl:
+        input()
 
     # sound
     if chip_8.sound > 0:
@@ -67,8 +76,8 @@ while True:
     
     # debugging print statements
     print("0x{:03X}: 0x{:04X}".format(chip_8.pc - 2, instr), end = '\t')
-    for r in chip_8.reg:
-        print("v{:0X}: 0x{:02X}", end='')
+    for i in range(len(chip_8.reg)):
+        print("v{:0X}: 0x{:02X}".format(i, chip_8.reg[i]), end=' ')
     print()
     print("stk: ", end='')
     for s in chip_8.stk:
@@ -115,35 +124,35 @@ while True:
         chip_8.pc = nnn
     elif op == 0x3:
         # this and next three are skips
-        print("if v{} == 0x{:02X}, then skip".format(x, nn))
+        print("if v{:0X} == 0x{:02X}, then skip".format(x, nn))
         if chip_8.reg[x] == nn:
             chip_8.pc += 2
     elif op == 0x4:
-        print("if v{} != 0x{:02X}, then skip".format(x, nn))
+        print("if v{:0X} != 0x{:02X}, then skip".format(x, nn))
         if chip_8.reg[x] != nn:
             chip_8.pc += 2
     elif op == 0x5 and n == 0x0:
-        print("if v{} == v{}, then skip".format(x, y))
+        print("if v{:0X} == v{:0X}, then skip".format(x, y))
         if chip_8.reg[x] == chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x9 and n == 0x0:
-        print("if v{} != v{}, then skip".format(x, y))
+        print("if v{:0X} != v{:0X}, then skip".format(x, y))
         if chip_8.reg[x] != chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x6:
         # set
-        print("set v%X" % x + " to 0x%X" % nn)
+        print("set v{:0X} to 0x{:02X}".format(x, nn))
         chip_8.reg[x] = nn
     elif op == 0x7:
         # add
-        print("add 0x%X" % nn + " to 0x%X" % chip_8.reg[x], end=', ')
+        print("add 0x{:02X} to 0x{:02X}".format(nn, chip_8.reg[x]), end=', ')
         chip_8.reg[x] = (chip_8.reg[x] + nn) % 0x100
-        print("sum is now 0x%X" % chip_8.reg[x])
+        print("sum is now 0x{:02X}".format(chip_8.reg[x]))
     elif op == 0x8:
         # logic
         if n == 0x0:
             # set
-            print("v{} is now set to the value in v{}".format(x, y))
+            print("v{:0X} is now set to the value in v{:0X}".format(x, y))
             chip_8.reg[x] = chip_8.reg[y]
         elif n == 0x1:
             # or
@@ -182,19 +191,19 @@ while True:
             # shift right
             if orig:
                 chip_8.reg[x] = chip_8.reg[y]
-            print("shift v{} = 0x{:0X} right".format(x, chip_8.reg[x]))
+            print("shift v{:0X} = 0x{:02X} right".format(x, chip_8.reg[x]))
             chip_8.reg[0xF] = chip_8.reg[x] & 0x1
             chip_8.reg[x] = chip_8.reg[x] >> 1
-            print("v{} is now 0x{:0X}".format(x, chip_8.reg[x]))
+            print("v{:0X} is now 0x{:02X}".format(x, chip_8.reg[x]))
         elif n == 0xE:
             # shift left
             if orig:
                 chip_8.reg[x] = chip_8.reg[y]
-            print("shift v{} = 0x{:0X} left".format(x, chip_8.reg[x]))
+            print("shift v{:0X} = 0x{:02X} left".format(x, chip_8.reg[x]))
             chip_8.reg[0xF] = chip_8.reg[x] >> 7
             chip_8.reg[x] = chip_8.reg[x] << 1
             chip_8.reg[x] = chip_8.reg[x] & 0xFF
-            print("v{} is now 0x{:0X}".format(x, chip_8.reg[x]))
+            print("v{:0X} is now 0x{:02X}".format(x, chip_8.reg[x]))
     elif op == 0xA:
         # set index
         print("set index to 0x{:03X} which points to 0x{:02X}".format(nnn, chip_8.memory[nnn]))
@@ -208,7 +217,7 @@ while True:
             chip_8.pc = nnn + chip_8.reg[x]
     elif op == 0xC:
         # random
-        print("make v{:01X} a random number &ed with {:02X}".format(x, nn))
+        print("make v{:01X} a random number &ed with 0x{:02X}".format(x, nn))
         r = random.randint(0, nn)
         chip_8.reg[x] = r & nn
     elif op == 0xD:
@@ -220,29 +229,46 @@ while True:
         for i in range(n):
             if dy - i < 0:
                 break
-            if dy - i > 0x1F:
+            if dy - i > 0x20:
                 break
             membyt = chip_8.memory[chip_8.index + i]
             for j in range(0x8):
                 if dx + j > 0x3F:
                     break
+                print("0x{:02X}".format(dy - i))
                 dispbit = (chip_8.display[dy - i] >> (0x3F - dx - j)) & 0x1
                 membit = (membyt >> (0x7 - j)) & 0x1
                 if membit == 1:
                     chip_8.display[dy - i] = chip_8.display[dy - i] ^ (0x1 << (0x3F - dx - j))
                     if dispbit == 1:
+                        for item in win.items[:]:
+                            first_point, second_point = literal_eval(re.split(r"\(|\)", str(item))[2]), literal_eval(re.split(r"\(|\)", str(item))[4])
+                            if int(first_point[0]) == dx + j and int(first_point[1]) == dy - i:
+                                item.undraw()
+                                break
                         chip_8.reg[0xF] = 1
-        for i in win.items[:]:
-            i.undraw()
+                    else:
+                        rect = Rectangle(Point(dx + j, dy - i), Point(dx + j + 1, dy - i + 1))
+                        rect.setFill("black")
+                        rect.draw(win)
+        # for i in win.items[:]:
+        #     s = str(i)
+        #     l = re.split(r"\(|\)", s)
+        #     first_point = literal_eval(l[2])
+        #     print(type(int(first_point[0])))
+        #     if int(first_point[0]) == dx + j and int(first_point[1]) == dy - i:
+        #         i.undraw()
+        #     print(first_point)
+        #     i.undraw()
+        # for i in range(len(chip_8.display)):
+        #     r = chip_8.display[i]
+        #     for j in range(0x40):
+        #         dispbit = (r >> (0x3F - j)) & 0x1
+        #         if dispbit == 1:
+        #             rect = Rectangle(Point(j, i), Point(j + 1, i + 1))
+        #             rect.setFill("black")
+        #             rect.draw(win)
         win.update()
-        for i in range(len(chip_8.display)):
-            r = chip_8.display[i]
-            for j in range(0x40):
-                dispbit = (r >> (0x3F - j)) & 0x1
-                if dispbit == 1:
-                    rect = Rectangle(Point(j, i), Point(j + 1, i + 1))
-                    rect.setFill("black")
-                    rect.draw(win)
     elif op == 0xE and nn == 0x9E:
         # skip if key is pressed
         ind = chip_8.corr.index(chip_8.reg[x])
@@ -292,12 +318,12 @@ while True:
             print("index is now at the font character \"{:01X}\"".format(chip_8.reg[x]))
         elif nn == 0x33:
             # binary-coded decimal conversion
-            print("put v{:01X} = {} into memory[{:03X}], in decimal".format(x, chip_8.reg[x], chip_8.index))
+            print("put v{:01X} = {:02X} into memory[{:03X}], in decimal".format(x, chip_8.reg[x], chip_8.index))
             b = chip_8.reg[x]
             chip_8.memory[chip_8.index + 2] = b % 10
-            b = int(b / 10)
+            b = b // 10
             chip_8.memory[chip_8.index + 1] = b % 10
-            b = int(b / 10)
+            b = b // 10
             chip_8.memory[chip_8.index] = b % 10
         elif nn == 0x55:
             # store memory
