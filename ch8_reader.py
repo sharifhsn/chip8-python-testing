@@ -1,21 +1,19 @@
-# prints the instructions for a rom
+# writes the instructions for a rom in hex
 import sys
 
 memory = []
-fileName = sys.argv[1]
-with open(fileName, mode = 'rb') as file:
-    fileContent = file.read()
-    for i in range(len(fileContent)):
-        memory.append(fileContent[i])
-print(memory)
+file_name = sys.argv[1]
+target = sys.argv[2]
+with open(file_name, mode = 'rb') as file:
+    file_content = file.read()
+    for i in range(len(file_content)):
+        memory.append(file_content[i])
 instrs = []
 for i in range(0, len(memory), 2):
     instr = (memory[i] << 8) | memory[i + 1]
     instrs.append(instr)
-def print_instrs(instrs):
-    for i in range(len(instrs)):
-        if instrs[i] >> 8 == 0x0:
-            print("0x%X" % (i * 2) + ": 0x00%X" % instrs[i])
-        else:
-            print("0x%X" % (i * 2) + ": 0x%X" % instrs[i])
-print_instrs(instrs)
+rom = ""
+for i in range(len(instrs)):
+    rom += "0x{:02X}: 0x{:04X}\n".format(i * 2, instrs[i])
+with open(target, "w") as f:
+    f.write(rom)
