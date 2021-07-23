@@ -26,11 +26,27 @@ for i in range(0x1000):
     memory.append(0x00)
 
 # initialize font for memory
-fonts = [0xF0, 0x90, 0x90, 0x90, 0xF0, 0x20, 0x60, 0x20, 0x20, 0x70, 0xF0, 0x10, 0xF0, 0x80, 0xF0, 0xF0, 0x10, 0xF0, 0x10, 0xF0, 0x90, 0x90, 0xF0, 0x10, 0x10, 0xF0, 0x80, 0xF0, 0x10, 0xF0, 0xF0, 0x80, 0xF0, 0x90, 0xF0, 0xF0, 0x10, 0x20, 0x40, 0x40, 0xF0, 0x90, 0xF0, 0x90, 0xF0, 0xF0, 0x90, 0xF0, 0x10, 0xF0, 0xF0, 0x90, 0xF0, 0x90, 0x90, 0xE0, 0x90, 0xE0, 0x90, 0xE0, 0xF0, 0x80, 0x80, 0x80, 0xF0, 0xE0, 0x90, 0x90, 0x90, 0xE0, 0xF0, 0x80, 0xF0, 0x80, 0xF0, 0xF0, 0x80, 0xF0, 0x80, 0x80]
+fonts = [
+    0xF0, 0x90, 0x90, 0x90, 0xF0, # 0
+    0x20, 0x60, 0x20, 0x20, 0x70, # 1
+    0xF0, 0x10, 0xF0, 0x80, 0xF0, # 2
+    0xF0, 0x10, 0xF0, 0x10, 0xF0, # 3
+    0x90, 0x90, 0xF0, 0x10, 0x10, # 4
+    0xF0, 0x80, 0xF0, 0x10, 0xF0, # 5
+    0xF0, 0x80, 0xF0, 0x90, 0xF0, # 6
+    0xF0, 0x10, 0x20, 0x40, 0x40, # 7
+    0xF0, 0x90, 0xF0, 0x90, 0xF0, # 8
+    0xF0, 0x90, 0xF0, 0x10, 0xF0, # 9
+    0xF0, 0x90, 0xF0, 0x90, 0x90, # A
+    0xE0, 0x90, 0xE0, 0x90, 0xE0, # B
+    0xF0, 0x80, 0x80, 0x80, 0xF0, # C
+    0xE0, 0x90, 0x90, 0x90, 0xE0, # D
+    0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
+    0xF0, 0x80, 0xF0, 0x80, 0x80, # F
+]
 j = 0x050
 for i in range(len(fonts)):
-    memory[j] = fonts[i]
-    j += 1
+    memory[0x50 + i] = fonts[i]
 
 # 8-bit registers - sixteen of them, each a byte
 reg = []
@@ -45,9 +61,6 @@ pc = 0x200
 
 # stack for executing functions (LIFO) 16 levels by default
 stk = []
-
-# stack pointer for the index in the stack
-stkp = 0x0
 
 # delay timer, decremented 60 times per second until it reaches 0
 delay = 0x00
@@ -108,10 +121,8 @@ def print_registers(reg):
 # load rom into memory
 with open(file_name, mode='rb') as file:
     file_content = file.read()
-    j = 0x200
     for i in range(len(file_content)):
-        memory[j] = file_content[i]
-        j += 1
+        memory[0x200 + i] = file_content[i]
     print_memory(memory)
 
 while True:
@@ -143,7 +154,6 @@ while True:
     n = instr & 0xF # fourth nibble
     nn = instr & 0xFF # second byte (8 bit number)
     nnn = instr & 0xFFF # second nibble plus second byte (12 bit memory address)
-
 
     # decode/execute
     if instr == 0x0000:
@@ -273,31 +283,27 @@ while True:
         reg[x] = r & nn
     elif op == 0xD:
         # display
-        print("display instruction")
+        print("display instruction at ({:02X},{:02X}) that is {} rows tall".format(reg[x], reg[y], n))
         dx = reg[x] % 0x40
-        dy = 0x20 - reg[y] % 0x20
+        dy = 0x1F - reg[y] % 0x20
         reg[0xF] = 0
-        ind = index
         savx = dx
         for i in range(n):
-            if dy > 0x1F:
+            if dy - i < 0:
                 break
-            membyt = memory[ind]
-            #print("membyt at index 0x%X" % ind + " is 0x%X" % membyt)
+            if dy - i > 0x1F:
+                break
+            membyt = memory[index + i]
             dx = savx
             for j in range(0x8):
-                if dx > 0x3F:
+                if dx + j > 0x3F:
                     break
-                dispbit = (display[dy] >> (0x3F - dx)) & 0x1
+                dispbit = (display[dy - i] >> (0x3F - dx - j)) & 0x1
                 membit = (membyt >> (0x7 - j)) & 0x1
-                #print("dispbit is 0x{:01x} and membit is 0x{:01x}".format(dispbit, membit))
                 if membit == 1:
-                    display[dy] = display[dy] ^ (0x1 << (0x3F - dx))
+                    display[dy - i] = display[dy - i] ^ (0x1 << (0x3F - dx - j))
                     if dispbit == 1:
                         reg[0xF] = 1
-                dx += 1
-            dy -= 1
-            ind += 1
         f = memory[index]
         draw_display(win, display)
     elif op == 0xE and nn == 0x9E:
@@ -359,7 +365,7 @@ while True:
             memory[index] = b % 10
         elif nn == 0x55:
             # store memory
-            print("store registers into memory at memory[{:03X}] until {:01X}".format(index, x))
+            print("store registers into memory at memory[{:03X}] up to v{:01X}".format(index, x))
             if inc:
                 for i in range(x + 1):
                     memory[index] = reg[i]
@@ -370,7 +376,7 @@ while True:
             pass
         elif nn == 0x65:
             # load memory
-            print("load registers from memory from memory[{:03X}] until {:01X}".format(index, x))
+            print("load registers from memory from memory[{:03X}] up to v{:01X}".format(index, x))
             if inc:
                 for i in range(x + 1):
                     reg[i] = memory[index]
@@ -380,7 +386,7 @@ while True:
                     reg[i] = memory[index + i]
         else:
             #print("false instruction loaded")
-            exit
+            break
     delay -= (time.time() - tick) * 60
     if delay < 0:
         delay = 0
