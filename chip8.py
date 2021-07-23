@@ -3,6 +3,7 @@ import keyboard
 import random
 import sys
 import time
+import winsound
 
 # build a chip-8 emulator
 
@@ -39,7 +40,6 @@ fonts = [
     0xF0, 0x80, 0xF0, 0x80, 0xF0, # E
     0xF0, 0x80, 0xF0, 0x80, 0x80, # F
 ]
-j = 0x050
 for i in range(len(fonts)):
     memory[0x50 + i] = fonts[i]
 
@@ -73,8 +73,18 @@ win = GraphWin(width = 64 * 16, height = 32 * 16)
 win.setCoords(0, 0, 64, 32)
 
 # key implementation
-keys = ['1', '2', '3', '4', 'q', 'w', 'e', 'r', 'a', 's', 'd', 'f', 'z', 'x', 'c', 'v']
-corr = [0x1, 0x2, 0x3, 0xC, 0x4, 0x5, 0x6, 0xD, 0x7, 0x8, 0x9, 0xE, 0xA, 0x0, 0xB, 0xF]
+keys = [
+    '1', '2', '3', '4',
+    'q', 'w', 'e', 'r',
+    'a', 's', 'd', 'f',
+    'z', 'x', 'c', 'v',
+    ]
+corr = [
+    0x1, 0x2, 0x3, 0xC,
+    0x4, 0x5, 0x6, 0xD,
+    0x7, 0x8, 0x9, 0xE,
+    0xA, 0x0, 0xB, 0xF,
+    ]
 
 # clear display
 def clear_display(win):
@@ -84,7 +94,6 @@ def clear_display(win):
 
 # draw display
 def draw_display(win, display):
-    #print("drawing display")
     clear_display(win)
     for i in range(len(display)):
         r = display[i]
@@ -98,16 +107,18 @@ def draw_display(win, display):
 # load rom into memory
 with open(file_name, mode='rb') as file:
     file_content = file.read()
-    j = 0x200
     for i in range(len(file_content)):
-        memory[j] = file_content[i]
-        j += 1
+        memory[0x200 + i] = file_content[i]
 
 while True:
     # set cycle speed
     tick = time.time()
     while time.time() <= tick + 1/700:
         pass
+
+    # sound
+    if sound > 0:
+        winsound.Beep(750, 500)
 
     # fetch
     instr = (memory[pc] << 8) | memory[pc + 1]
