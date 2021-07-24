@@ -25,6 +25,11 @@ In the command line, go to the directory `chip8-python-testing` wherever it has 
 - `-d` enables debugging mode
 - `-l` is used on top of `-d` to pause after every instruction
 
+Here is an example of the most common way to run this program:
+```
+> python chip8_interpreter.py programs/ibm.ch8
+```
+
 ## How can I write a CHIP-8 emulator?
 
 I used [this guide](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) to write my emulator. It is language-independent and doesn't completely walk you through the process, so it's a good learning tool. For graphics, I used `graphics.py` and the `GraphWin` object in particular, though there are many, many other graphics tools based around Tkinter.
