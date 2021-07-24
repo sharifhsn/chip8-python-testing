@@ -1,10 +1,10 @@
 import sys
 import os
 import re
-import time
-import random
+from time import time, sleep
+from random import randint
 import keyboard
-import winsound
+from winsound import Beep
 from ast import literal_eval
 from graphics import GraphWin, Rectangle, Point
 from chip8_engine import Chip8
@@ -49,26 +49,19 @@ with open(file_name, 'rb') as f:
         chip_8.memory[0x200 + i] = file_content[i]
 
 # create canvas
-win = GraphWin(width=64 * 16, height=32 * 16, autoflush=False)
+win = GraphWin(width=64*16, height=32*16, autoflush=False)
 win.setCoords(0, 0, 64, 32)
 
-# clear display
-def clear_display(win):
-    for i in win.items[:]:
-        i.undraw()
-    win.update()
-
-# interpeter loop
+# interpreter loop
 while True:
     # cycle timing
-    tick = time.time()
-    time.sleep(1/700)
+    tick = time()
     if lbl:
         input()
 
     # sound
     if chip_8.sound > 0:
-        winsound.Beep(750, 500)
+        Beep(750, 500)
 
     # fetch instruction
     instr = (chip_8.memory[chip_8.pc] << 8) | chip_8.memory[chip_8.pc + 1]
@@ -101,7 +94,7 @@ while True:
         # clear screen
         print("clear the screen")
         for i in range(len(chip_8.display)):
-            chip_8.display[i] = 0x0000000000000000
+            chip_8.display[i] = 0x0
         for i in win.items[:]:
             i.undraw()
         win.update()
@@ -111,7 +104,7 @@ while True:
         chip_8.pc = chip_8.stk.pop()
     elif op == 0x1:
         # jump to nnn
-        print("jump to 0x%X" % nnn)
+        print(f"jump to 0x{nnn:02X}")
         if chip_8.pc - 2 == nnn:
             # loops on last instruction
             print("program complete")
@@ -218,7 +211,7 @@ while True:
     elif op == 0xC:
         # random
         print("make v{:01X} a random number &ed with 0x{:02X}".format(x, nn))
-        r = random.randint(0, nn)
+        r = randint(0, nn)
         chip_8.reg[x] = r & nn
     elif op == 0xD:
         # display
@@ -235,7 +228,6 @@ while True:
             for j in range(0x8):
                 if dx + j > 0x3F:
                     break
-                print("0x{:02X}".format(dy - i))
                 dispbit = (chip_8.display[dy - i] >> (0x3F - dx - j)) & 0x1
                 membit = (membyt >> (0x7 - j)) & 0x1
                 if membit == 1:
@@ -251,23 +243,6 @@ while True:
                         rect = Rectangle(Point(dx + j, dy - i), Point(dx + j + 1, dy - i + 1))
                         rect.setFill("black")
                         rect.draw(win)
-        # for i in win.items[:]:
-        #     s = str(i)
-        #     l = re.split(r"\(|\)", s)
-        #     first_point = literal_eval(l[2])
-        #     print(type(int(first_point[0])))
-        #     if int(first_point[0]) == dx + j and int(first_point[1]) == dy - i:
-        #         i.undraw()
-        #     print(first_point)
-        #     i.undraw()
-        # for i in range(len(chip_8.display)):
-        #     r = chip_8.display[i]
-        #     for j in range(0x40):
-        #         dispbit = (r >> (0x3F - j)) & 0x1
-        #         if dispbit == 1:
-        #             rect = Rectangle(Point(j, i), Point(j + 1, i + 1))
-        #             rect.setFill("black")
-        #             rect.draw(win)
         win.update()
     elif op == 0xE and nn == 0x9E:
         # skip if key is pressed
@@ -349,10 +324,11 @@ while True:
         else:
             # unmapped instruction
             break
-    chip_8.delay -= (time.time() - tick) * 60
+    sleep(1/700)
+    chip_8.delay -= (time() - tick) * 60
     if chip_8.delay < 0:
         chip_8.delay = 0
-    chip_8.sound -= (time.time() - tick) * 60
+    chip_8.sound -= (time() - tick) * 60
     if chip_8.sound < 0:
         chip_8.sound = 0
 win.getMouse()
