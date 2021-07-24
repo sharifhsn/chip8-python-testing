@@ -56,12 +56,13 @@ win.setCoords(0, 0, 64, 32)
 while True:
     # cycle timing
     tick = time()
+    cycle = 1/700
     if lbl:
         input()
 
     # sound
     if chip_8.sound > 0:
-        Beep(750, 500)
+        Beep(750, 100)
 
     # fetch instruction
     instr = (chip_8.memory[chip_8.pc] << 8) | chip_8.memory[chip_8.pc + 1]
@@ -93,6 +94,7 @@ while True:
     elif instr == 0x00E0:
         # clear screen
         print("clear the screen")
+        cycle = .000109
         for i in range(len(chip_8.display)):
             chip_8.display[i] = 0x0
         for i in win.items[:]:
@@ -101,10 +103,12 @@ while True:
     elif instr == 0x00EE:
         # pop stack
         print("pop stack")
+        cycle = .000105
         chip_8.pc = chip_8.stk.pop()
     elif op == 0x1:
         # jump to nnn
         print(f"jump to 0x{nnn:02X}")
+        cycle = 0
         if chip_8.pc - 2 == nnn:
             # loops on last instruction
             print("program complete")
@@ -113,36 +117,44 @@ while True:
     elif op == 0x2:
         # call nnn, push current chip_8.pc to stack
         print("push 0x{:03X} to stack and jump to 0x{:03X}".format(chip_8.pc, nnn))
+        cycle = .000105
         chip_8.stk.append(chip_8.pc)
         chip_8.pc = nnn
     elif op == 0x3:
         # this and next three are skips
         print("if v{:0X} == 0x{:02X}, then skip".format(x, nn))
+        cycle = 0
         if chip_8.reg[x] == nn:
             chip_8.pc += 2
     elif op == 0x4:
         print("if v{:0X} != 0x{:02X}, then skip".format(x, nn))
+        cycle = .000055
         if chip_8.reg[x] != nn:
             chip_8.pc += 2
     elif op == 0x5 and n == 0x0:
         print("if v{:0X} == v{:0X}, then skip".format(x, y))
+        cycle = .000073
         if chip_8.reg[x] == chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x9 and n == 0x0:
         print("if v{:0X} != v{:0X}, then skip".format(x, y))
+        cycle = .000073
         if chip_8.reg[x] != chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x6:
         # set
         print("set v{:0X} to 0x{:02X}".format(x, nn))
+        cycle = .000027
         chip_8.reg[x] = nn
     elif op == 0x7:
         # add
         print("add 0x{:02X} to 0x{:02X}".format(nn, chip_8.reg[x]), end=', ')
+        cycle = 0
         chip_8.reg[x] = (chip_8.reg[x] + nn) % 0x100
         print("sum is now 0x{:02X}".format(chip_8.reg[x]))
     elif op == 0x8:
         # logic
+        cycle = .000200
         if n == 0x0:
             # set
             print("v{:0X} is now set to the value in v{:0X}".format(x, y))
@@ -200,10 +212,12 @@ while True:
     elif op == 0xA:
         # set index
         print("set index to 0x{:03X} which points to 0x{:02X}".format(nnn, chip_8.memory[nnn]))
+        cycle = .000055
         chip_8.index = nnn
     elif op == 0xB:
         # offset jump
         print("jump to {:03X} + {:02X}".format(nnn, chip_8.reg[0]))
+        cycle = .000105
         if orig:
             chip_8.pc = nnn + chip_8.reg[0]
         else:
@@ -211,11 +225,13 @@ while True:
     elif op == 0xC:
         # random
         print("make v{:01X} a random number &ed with 0x{:02X}".format(x, nn))
+        cycle = .000164
         r = randint(0, nn)
         chip_8.reg[x] = r & nn
     elif op == 0xD:
         # display
         print("display instruction at ({:02X},{:02X}) that is {} rows tall".format(chip_8.reg[x], chip_8.reg[y], n))
+        cycle = 0
         dx = chip_8.reg[x] % 0x40
         dy = 0x1F - chip_8.reg[y] % 0x20
         chip_8.reg[0xF] = 0
@@ -246,6 +262,7 @@ while True:
         win.update()
     elif op == 0xE and nn == 0x9E:
         # skip if key is pressed
+        cycle = .000073
         ind = chip_8.corr.index(chip_8.reg[x])
         print(f"skip if \"{chip_8.keys[ind]}\" is pressed")
         if keyboard.is_pressed(chip_8.keys[ind]):
@@ -253,6 +270,7 @@ while True:
             chip_8.pc += 2
     elif op == 0xE and nn == 0xA1:
         # skip if key is not pressed
+        cycle = .000073
         ind = chip_8.corr.index(chip_8.reg[x])
         print(f"skip if \"{chip_8.keys[ind]}\" is not pressed")
         if not keyboard.is_pressed(chip_8.keys[ind]):
@@ -263,22 +281,27 @@ while True:
         if nn == 0x07:
             # this and two next are timers
             print("v{:01X} is now 0x{:03X} from delay".format(x, chip_8.reg[x]))
+            cycle = .000045
             chip_8.reg[x] = int(chip_8.delay)
         elif nn == 0x15:
             print("delay is now 0x{:03X} from v{:01X}".format(chip_8.reg[x], x))
+            cycle = .000045
             chip_8.delay = chip_8.reg[x]
         elif nn == 0x18:
             print("sound is now 0x{:03X} from v{:01X}".format(chip_8.reg[x], x))
+            cycle = .000045
             chip_8.sound = chip_8.reg[x]
         elif nn == 0x1E:
             # add to index
             print("add v{:01X} = {:03X} to index".format(x, chip_8.reg[x]))
+            cycle = .000086
             chip_8.index += chip_8.reg[x]
             if chip_8.index > 0xFFF:
                 chip_8.index %= 0x1000
                 chip_8.reg[0xF] = 1
             print("index is now {:03X}".format(chip_8.index))
         elif nn == 0x0A:
+            cycle = 0
             while True:
                 k = keyboard.read_key()
                 if k not in chip_8.keys:
@@ -289,11 +312,13 @@ while True:
             print("store 0x{:03X} in v{:01X} from \"{}\" being pressed".format(chip_8.reg[x], x, chip_8.corr[ind]))
         elif nn == 0x29:
             # font character
+            cycle = .000091
             chip_8.index = 0x50 + chip_8.reg[x] * 0x5
             print("index is now at the font character \"{:01X}\"".format(chip_8.reg[x]))
         elif nn == 0x33:
             # binary-coded decimal conversion
             print("put v{:01X} = {:02X} into memory[{:03X}], in decimal".format(x, chip_8.reg[x], chip_8.index))
+            cycle = .000927
             b = chip_8.reg[x]
             chip_8.memory[chip_8.index + 2] = b % 10
             b = b // 10
@@ -303,6 +328,7 @@ while True:
         elif nn == 0x55:
             # store memory
             print("store registers into memory at memory[{:03X}] up to v{:01X}".format(chip_8.index, x))
+            cycle = .000605
             if inc:
                 for i in range(x + 1):
                     chip_8.memory[chip_8.index] = chip_8.reg[i]
@@ -314,6 +340,7 @@ while True:
         elif nn == 0x65:
             # load memory
             print("load registers from memory from memory[{:03X}] up to v{:01X}".format(chip_8.index, x))
+            cycle = .000605
             if inc:
                 for i in range(x + 1):
                     chip_8.reg[i] = chip_8.memory[chip_8.index]
@@ -324,7 +351,8 @@ while True:
         else:
             # unmapped instruction
             break
-    sleep(1/700)
+    cycle /= 60
+    sleep(cycle)
     chip_8.delay -= (time() - tick) * 60
     if chip_8.delay < 0:
         chip_8.delay = 0
