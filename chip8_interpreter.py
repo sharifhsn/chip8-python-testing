@@ -71,7 +71,7 @@ while True:
     # debugging print statements
     print(f"0x{chip_8.pc - 2:03X}: 0x{instr:04X}", end = '\t')
     for i in range(len(chip_8.reg)):
-        print(f"v{i:0X}: 0x{chip_8.reg[i]:02X}", end=' ')
+        print(f"v{i:X}: 0x{chip_8.reg[i]:02X}", end=' ')
     print("\nstk: ", end='')
     for s in chip_8.stk:
         print(f"0x{s:03X},", end=' ')
@@ -121,28 +121,28 @@ while True:
         chip_8.pc = nnn
     elif op == 0x3:
         # this and next three are skips
-        print(f"if v{x:0X} == 0x{nn:02X}, then skip")
+        print(f"if v{x:X} == 0x{nn:02X}, then skip")
         cycle = 0
         if chip_8.reg[x] == nn:
             chip_8.pc += 2
     elif op == 0x4:
-        print(f"if v{x:0X} != 0x{nn:02X}, then skip")
+        print(f"if v{x:X} != 0x{nn:02X}, then skip")
         cycle = 0
         if chip_8.reg[x] != nn:
             chip_8.pc += 2
     elif op == 0x5 and n == 0x0:
-        print(f"if v{x:0X} == v{y:0X}, then skip")
+        print(f"if v{x:X} == v{y:X}, then skip")
         cycle = 0
         if chip_8.reg[x] == chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x9 and n == 0x0:
-        print(f"if v{x:0X} != v{y:0X}, then skip")
+        print(f"if v{x:X} != v{y:X}, then skip")
         cycle = 0
         if chip_8.reg[x] != chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x6:
         # set
-        print(f"set v{x:0X} to 0x{nn:02X}")
+        print(f"set v{x:X} to 0x{nn:02X}")
         cycle = 0
         chip_8.reg[x] = nn
     elif op == 0x7:
@@ -156,7 +156,7 @@ while True:
         cycle = 0
         if n == 0x0:
             # set
-            print(f"v{x:0X} is now set to the value in v{y:0X}")
+            print(f"v{x:X} is now set to the value in v{y:X}")
             chip_8.reg[x] = chip_8.reg[y]
         elif n == 0x1:
             # or
@@ -195,19 +195,19 @@ while True:
             # shift right
             if orig:
                 chip_8.reg[x] = chip_8.reg[y]
-            print(f"shift v{x:0X} = 0x{chip_8.reg[x]:02X} right")
+            print(f"shift v{x:X} = 0x{chip_8.reg[x]:02X} right")
             chip_8.reg[0xF] = chip_8.reg[x] & 0x1
             chip_8.reg[x] = chip_8.reg[x] >> 1
-            print(f"v{x:0X} is now 0x{chip_8.reg[x]:02X}")
+            print(f"v{x:X} is now 0x{chip_8.reg[x]:02X}")
         elif n == 0xE:
             # shift left
             if orig:
                 chip_8.reg[x] = chip_8.reg[y]
-            print(f"shift v{x:0X} = 0x{chip_8.reg[x]:02X} left")
+            print(f"shift v{x:X} = 0x{chip_8.reg[x]:02X} left")
             chip_8.reg[0xF] = chip_8.reg[x] >> 7
             chip_8.reg[x] = chip_8.reg[x] << 1
             chip_8.reg[x] = chip_8.reg[x] & 0xFF
-            print(f"v{x:0X} is now 0x{chip_8.reg[x]:02X}")
+            print(f"v{x:X} is now 0x{chip_8.reg[x]:02X}")
     elif op == 0xA:
         # set index
         print(f"set index to 0x{nnn:03X} which points to 0x{chip_8.memory[nnn]:02X}")
@@ -352,7 +352,8 @@ while True:
             # unmapped instruction
             break
     cycle /= 60
-    sleep(cycle)
+    if cycle > 0:
+        sleep(cycle)
     chip_8.delay -= (time() - tick) * 60
     if chip_8.delay < 0:
         chip_8.delay = 0
