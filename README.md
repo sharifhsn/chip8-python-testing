@@ -30,6 +30,16 @@ Here is an example of the most common way to run this program:
 > python chip8_interpreter.py programs/ibm.ch8
 ```
 
+The keypad for the original COSMAC VIP looked like this:
+![COSMAC VIP keypad](https://github.com/sharifhsn/chip8-python-testing/blob/main/images/cosmac_vip_keypad.png?raw=true)
+
+The implementation on a modern QWERTY keyboard looks like this:
+| 1 | 2 | 3 | 4 |
+| --- | --- | --- | --- |
+| q | w | e | r |
+| a | s | d | f |
+| z | x | c | v |
+
 ## How can I write a CHIP-8 emulator?
 
 I used [this guide](https://tobiasvl.github.io/blog/write-a-chip-8-emulator/) to write my emulator. It is language-independent and doesn't completely walk you through the process, so it's a good learning tool. For graphics, I used `graphics.py` and the `GraphWin` object in particular, though there are many, many other graphics tools based around Tkinter.
