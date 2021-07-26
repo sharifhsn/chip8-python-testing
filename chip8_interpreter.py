@@ -3,7 +3,9 @@ import os
 import re
 from time import time, sleep
 from random import randint
+from copy import deepcopy
 import keyboard
+import logging
 import winsound
 import threading
 from ast import literal_eval
@@ -27,6 +29,13 @@ lbl = False
 # rom filename
 file_name = sys.argv[1]
 
+# fn extracts the specific filename
+fn = deepcopy(file_name)
+while fn.find("/") != -1:
+    fn = fn[fn.find("/") + 1:]
+if fn.find(".") != -1:
+    fn = fn[:fn.find(".")]
+
 # additional commands
 if len(sys.argv) > 2:
     for comm in sys.argv[2:]:
@@ -39,9 +48,17 @@ if len(sys.argv) > 2:
         elif comm == "-l":
             lbl = True
 
-# nullify print statements if not debugging
-if not debug:
-    sys.stdout = open(os.devnull, 'w')
+# change logging level if debugging
+if debug:
+    loglevel = logging.INFO
+else:
+    loglevel = logging.WARNING
+logger = logging.getLogger()
+logger.setLevel(loglevel)
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(loglevel)
+handler.terminator = ""
+logger.addHandler(handler)
 
 # load rom into memory
 with open(file_name, 'rb') as f:
@@ -50,7 +67,7 @@ with open(file_name, 'rb') as f:
         chip_8.memory[0x200 + i] = file_content[i]
     
 # create canvas
-win = GraphWin(width=64*16, height=32*16, autoflush=False)
+win = GraphWin(title=fn, width=64*16, height=32*16, autoflush=False)
 win.setCoords(0, 0, 64, 32)
 
 # sound function
@@ -69,13 +86,13 @@ while True:
     chip_8.pc += 2
     
     # debugging print statements
-    print(f"0x{chip_8.pc - 2:03X}: 0x{instr:04X}", end = '\t')
+    logging.info(f"0x{chip_8.pc - 2:03X}: 0x{instr:04X}\t")
     for i in range(len(chip_8.reg)):
-        print(f"v{i:X}: 0x{chip_8.reg[i]:02X}", end=' ')
-    print("\nstk: ", end='')
+        logging.info(f"v{i:X}: 0x{chip_8.reg[i]:02X} ")
+    logging.info("\nstk: ")
     for s in chip_8.stk:
-        print(f"0x{s:03X},", end=' ')
-    print()
+        logging.info(f"0x{s:03X}, ")
+    logging.info("\n")
 
     # nibble information
     op = (instr >> 0xC) & 0xF # first nibble
@@ -89,11 +106,11 @@ while True:
     tick = time()
     if instr == 0x0000:
         # end of program
-        print("program is over")
+        logging.info("program is over\n")
         break
     elif instr == 0x00E0:
         # clear screen
-        print("clear the screen")
+        logging.info("clear the screen\n")
         cycle = 0
         chip_8.display = [0x0 for i in chip_8.display]
         for i in win.items[:]:
@@ -101,62 +118,62 @@ while True:
         win.update()
     elif instr == 0x00EE:
         # pop stack
-        print("pop stack")
+        logging.info("pop stack\n")
         cycle = 0
         chip_8.pc = chip_8.stk.pop()
     elif op == 0x1:
         # jump to nnn
-        print(f"jump to 0x{nnn:02X}")
+        logging.info(f"jump to 0x{nnn:02X}\n")
         cycle = 0
         if chip_8.pc - 2 == nnn:
             # loops on last instruction
-            print("program complete")
+            logging.info("program complete\n")
             break
         chip_8.pc = nnn
     elif op == 0x2:
         # call nnn, push current pc to stack
-        print(f"push 0x{chip_8.pc:03X} to stack and jump to 0x{nnn:03X}")
+        logging.info(f"push 0x{chip_8.pc:03X} to stack and jump to 0x{nnn:03X}\n")
         cycle = 0
         chip_8.stk.append(chip_8.pc)
         chip_8.pc = nnn
     elif op == 0x3:
         # this and next three are skips
-        print(f"if v{x:X} == 0x{nn:02X}, then skip")
+        logging.info(f"if v{x:X} == 0x{nn:02X}, then skip\n")
         cycle = 0
         if chip_8.reg[x] == nn:
             chip_8.pc += 2
     elif op == 0x4:
-        print(f"if v{x:X} != 0x{nn:02X}, then skip")
+        logging.info(f"if v{x:X} != 0x{nn:02X}, then skip\n")
         cycle = 0
         if chip_8.reg[x] != nn:
             chip_8.pc += 2
     elif op == 0x5 and n == 0x0:
-        print(f"if v{x:X} == v{y:X}, then skip")
+        logging.info(f"if v{x:X} == v{y:X}, then skip\n")
         cycle = 0
         if chip_8.reg[x] == chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x9 and n == 0x0:
-        print(f"if v{x:X} != v{y:X}, then skip")
+        logging.info(f"if v{x:X} != v{y:X}, then skip\n")
         cycle = 0
         if chip_8.reg[x] != chip_8.reg[y]:
             chip_8.pc += 2
     elif op == 0x6:
         # set
-        print(f"set v{x:X} to 0x{nn:02X}")
+        logging.info(f"set v{x:X} to 0x{nn:02X}\n")
         cycle = 0
         chip_8.reg[x] = nn
     elif op == 0x7:
         # add
-        print(f"add 0x{nn:02X} to 0x{chip_8.reg[x]:02X}", end=', ')
+        logging.info(f"add 0x{nn:02X} to 0x{chip_8.reg[x]:02X}, ")
         cycle = 0
         chip_8.reg[x] = (chip_8.reg[x] + nn) % 0x100
-        print(f"sum is now 0x{chip_8.reg[x]:02X}")
+        logging.info(f"sum is now 0x{chip_8.reg[x]:02X}\n")
     elif op == 0x8:
         # logic
         cycle = 0
         if n == 0x0:
             # set
-            print(f"v{x:X} is now set to the value in v{y:X}")
+            logging.info(f"v{x:X} is now set to the value in v{y:X}\n")
             chip_8.reg[x] = chip_8.reg[y]
         elif n == 0x1:
             # or
@@ -195,27 +212,27 @@ while True:
             # shift right
             if orig:
                 chip_8.reg[x] = chip_8.reg[y]
-            print(f"shift v{x:X} = 0x{chip_8.reg[x]:02X} right")
+            logging.info(f"shift v{x:X} = 0x{chip_8.reg[x]:02X} right\n")
             chip_8.reg[0xF] = chip_8.reg[x] & 0x1
             chip_8.reg[x] = chip_8.reg[x] >> 1
-            print(f"v{x:X} is now 0x{chip_8.reg[x]:02X}")
+            logging.info(f"v{x:X} is now 0x{chip_8.reg[x]:02X}\n")
         elif n == 0xE:
             # shift left
             if orig:
                 chip_8.reg[x] = chip_8.reg[y]
-            print(f"shift v{x:X} = 0x{chip_8.reg[x]:02X} left")
+            logging.info(f"shift v{x:X} = 0x{chip_8.reg[x]:02X} left\n")
             chip_8.reg[0xF] = chip_8.reg[x] >> 7
             chip_8.reg[x] = chip_8.reg[x] << 1
             chip_8.reg[x] = chip_8.reg[x] & 0xFF
-            print(f"v{x:X} is now 0x{chip_8.reg[x]:02X}")
+            logging.info(f"v{x:X} is now 0x{chip_8.reg[x]:02X}\n")
     elif op == 0xA:
         # set index
-        print(f"set index to 0x{nnn:03X} which points to 0x{chip_8.memory[nnn]:02X}")
+        logging.info(f"set index to 0x{nnn:03X} which points to 0x{chip_8.memory[nnn]:02X}\n")
         cycle = .000055
         chip_8.index = nnn
     elif op == 0xB:
         # offset jump
-        print(f"jump to {nnn:03X} + {chip_8.reg[0]:02X}")
+        logging.info(f"jump to {nnn:03X} + {chip_8.reg[0]:02X}\n")
         cycle = .000105
         if orig:
             chip_8.pc = nnn + chip_8.reg[0]
@@ -223,13 +240,13 @@ while True:
             chip_8.pc = nnn + chip_8.reg[x]
     elif op == 0xC:
         # random
-        print(f"make v{x:01X} a random number &ed with 0x{nn:02X}")
+        logging.info(f"make v{x:01X} a random number &ed with 0x{nn:02X}\n")
         cycle = .000164
         r = randint(0, nn)
         chip_8.reg[x] = r & nn
     elif op == 0xD:
         # display
-        print(f"display instruction at ({chip_8.reg[x]:02X},{chip_8.reg[y]:02X}) that is {n} rows tall")
+        logging.info(f"display instruction at ({chip_8.reg[x]:02X},{chip_8.reg[y]:02X}) that is {n} rows tall\n")
         cycle = 0
         dx = chip_8.reg[x] % 0x40
         dy = 0x1F - chip_8.reg[y] % 0x20
@@ -263,44 +280,44 @@ while True:
         # skip if key is pressed
         cycle = .000073
         ind = chip_8.corr.index(chip_8.reg[x])
-        print(f"skip if \"{chip_8.keys[ind]}\" is pressed")
+        logging.info(f"skip if \"{chip_8.keys[ind]}\" is pressed\n")
         if keyboard.is_pressed(chip_8.keys[ind]):
-            print(f"\"{chip_8.keys[ind]}\" is indeed pressed")
+            logging.info(f"\"{chip_8.keys[ind]}\" is indeed pressed\n")
             chip_8.pc += 2
     elif op == 0xE and nn == 0xA1:
         # skip if key is not pressed
         cycle = .000073
         ind = chip_8.corr.index(chip_8.reg[x])
-        print(f"skip if \"{chip_8.keys[ind]}\" is not pressed")
+        logging.info(f"skip if \"{chip_8.keys[ind]}\" is not pressed\n")
         if not keyboard.is_pressed(chip_8.keys[ind]):
-            print(f"\"{chip_8.keys[ind]}\" is indeed not pressed")
+            logging.info(f"\"{chip_8.keys[ind]}\" is indeed not pressed\n")
             chip_8.pc += 2
     elif op == 0xF:
         # various instructions
         if nn == 0x07:
             # this and two next are timers
-            print(f"v{x:01X} is now 0x{chip_8.reg[x]:03X} from delay")
+            logging.info(f"v{x:01X} is now 0x{chip_8.reg[x]:03X} from delay\n")
             cycle = .000045
             chip_8.reg[x] = int(chip_8.delay)
         elif nn == 0x15:
-            print(f"delay is now 0x{chip_8.reg[x]:03X} from v{x:01X}")
+            logging.info(f"delay is now 0x{chip_8.reg[x]:03X} from v{x:01X}\n")
             cycle = .000045
             chip_8.delay = chip_8.reg[x]
         elif nn == 0x18:
-            print(f"sound is now 0x{chip_8.reg[x]:03X} from v{x:01X}")
+            logging.info(f"sound is now 0x{chip_8.reg[x]:03X} from v{x:01X}\n")
             cycle = .000045
             chip_8.sound = chip_8.reg[x]
             sound_thread = threading.Thread(target=beep, args=(chip_8.sound,))
             sound_thread.start()
         elif nn == 0x1E:
             # add to index
-            print(f"add v{x:01X} = {chip_8.reg[x]:03X} to index")
+            logging.info(f"add v{x:01X} = {chip_8.reg[x]:03X} to index\n")
             cycle = .000086
             chip_8.index += chip_8.reg[x]
             if chip_8.index > 0xFFF:
                 chip_8.index %= 0x1000
                 chip_8.reg[0xF] = 1
-            print(f"index is now {chip_8.index:03X}")
+            logging.info(f"index is now {chip_8.index:03X}\n")
         elif nn == 0x0A:
             cycle = 0
             while True:
@@ -310,15 +327,15 @@ while True:
                 ind = chip_8.keys.index(k)
                 break
             chip_8.reg[x] = chip_8.corr[ind]
-            print(f"store 0x{chip_8.reg[x]:03X} in v{x:01X} from \"{chip_8.corr[ind]}\" being pressed")
+            logging.info(f"store 0x{chip_8.reg[x]:03X} in v{x:01X} from \"{chip_8.corr[ind]}\" being pressed\n")
         elif nn == 0x29:
             # font character
             cycle = .000091
             chip_8.index = 0x50 + chip_8.reg[x] * 0x5
-            print(f"index is now at the font character \"{chip_8.reg[x]:01X}\"")
+            logging.info(f"index is now at the font character \"{chip_8.reg[x]:01X}\"\n")
         elif nn == 0x33:
             # binary-coded decimal conversion
-            print(f"put v{x:01X} = {chip_8.reg[x]:02X} into memory[{chip_8.index:03X}], in decimal")
+            logging.info(f"put v{x:01X} = {chip_8.reg[x]:02X} into memory[{chip_8.index:03X}], in decimal\n")
             cycle = .000927
             b = chip_8.reg[x]
             chip_8.memory[chip_8.index + 2] = b % 10
@@ -328,7 +345,7 @@ while True:
             chip_8.memory[chip_8.index] = b % 10
         elif nn == 0x55:
             # store memory
-            print(f"store registers into memory at memory[{chip_8.index:03X}] up to v{x:01X}")
+            logging.info(f"store registers into memory at memory[{chip_8.index:03X}] up to v{x:01X}\n")
             cycle = .000605
             if inc:
                 for i in range(x + 1):
@@ -339,7 +356,7 @@ while True:
                     chip_8.memory[chip_8.index + i] = chip_8.reg[i]
         elif nn == 0x65:
             # load memory
-            print(f"load registers from memory from memory[{chip_8.index:03X}] up to v{x:01X}")
+            logging.info(f"load registers from memory from memory[{chip_8.index:03X}] up to v{x:01X}\n")
             cycle = .000605
             if inc:
                 for i in range(x + 1):
